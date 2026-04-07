@@ -22,5 +22,20 @@ os.environ.setdefault(
 )
 
 from app.main import app  # noqa: E402
+from app.services.database import init_db  # noqa: E402
+
+# Vercel does NOT run FastAPI's lifespan/startup hooks, so init_db() from
+# app.main's lifespan never fires. Run it explicitly here at module import
+# time. This happens once per cold start; the SQL is idempotent
+# (CREATE TABLE IF NOT EXISTS).
+import asyncio  # noqa: E402
+
+try:
+    asyncio.run(init_db())
+except RuntimeError:
+    # Already inside an event loop (shouldn't happen at import time, but
+    # just in case): schedule on the running loop instead.
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(init_db())
 
 __all__ = ["app"]
