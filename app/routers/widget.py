@@ -111,7 +111,7 @@ _DEMO_HTML = """<!doctype html>
   <h2>Einbettung</h2>
   <pre>&lt;script src="/widget/boerdi-widget.js" defer&gt;&lt;/script&gt;
 &lt;boerdi-chat
-  api-url="http://localhost:8000"
+  api-url="https://boerdi-chatbot-backend.vercel.app"
   page-context='{"thema":"demo","seite":"widget-test"}'
   position="bottom-right"
   primary-color="#1c4587"&gt;
@@ -132,7 +132,7 @@ _DEMO_HTML = """<!doctype html>
 
   <script src="/widget/boerdi-widget.js" defer></script>
   <boerdi-chat
-    api-url="http://localhost:8000"
+    api-url="https://boerdi-chatbot-backend.vercel.app"
     page-context='{"thema":"demo","seite":"widget-test"}'
     position="bottom-right"
     primary-color="#1c4587">
