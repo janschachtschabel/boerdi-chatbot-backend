@@ -10,11 +10,41 @@ from datetime import datetime
 from typing import Any
 
 import aiosqlite
-import sqlite_vec
+
+# sqlite-vec is OPTIONAL. On runtimes without sqlite3 extension support
+# (e.g. Vercel's stock Python), the import or extension load fails. In that
+# case we silently disable vector search — the rest of the app keeps working.
+try:
+    import sqlite_vec  # type: ignore
+    _SQLITE_VEC_AVAILABLE = True
+except Exception:  # pragma: no cover
+    sqlite_vec = None  # type: ignore
+    _SQLITE_VEC_AVAILABLE = False
 
 DB_PATH = os.getenv("DATABASE_PATH", "badboerdi.db")
 
 EMBED_DIM = 1536  # text-embedding-3-small
+
+
+def _vec_supported() -> bool:
+    """Probe whether sqlite-vec can actually be loaded on this runtime."""
+    if not _SQLITE_VEC_AVAILABLE:
+        return False
+    try:
+        import sqlite3
+        conn = sqlite3.connect(":memory:")
+        try:
+            conn.enable_load_extension(True)
+            sqlite_vec.load(conn)
+            conn.enable_load_extension(False)
+            return True
+        finally:
+            conn.close()
+    except Exception:
+        return False
+
+
+_VEC_OK = _vec_supported()
 
 
 def _make_vec_connector(db_path: str = DB_PATH):
@@ -23,9 +53,10 @@ def _make_vec_connector(db_path: str = DB_PATH):
 
     def connector() -> sqlite3.Connection:
         conn = sqlite3.connect(db_path)
-        conn.enable_load_extension(True)
-        sqlite_vec.load(conn)
-        conn.enable_load_extension(False)
+        if _VEC_OK:
+            conn.enable_load_extension(True)
+            sqlite_vec.load(conn)
+            conn.enable_load_extension(False)
         return conn
 
     return connector
@@ -119,6 +150,9 @@ async def init_db():
         await db.commit()
 
     # Second: create vec0 virtual table (needs sqlite-vec extension)
+    if not _VEC_OK:
+        # Vector search disabled on this runtime (e.g. Vercel). Skip silently.
+        return
     async with _connect_vec() as db:
         try:
             await db.execute(
